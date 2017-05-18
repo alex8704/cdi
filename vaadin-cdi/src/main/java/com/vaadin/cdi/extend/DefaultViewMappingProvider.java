@@ -9,7 +9,6 @@ import javax.enterprise.inject.Default;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.inject.Inject;
 import java.io.Serializable;
-import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.List;
 
@@ -17,14 +16,9 @@ import java.util.List;
  * Created by Alexander.Castro on 17/05/2017.
  */
 @Default
-public class DefaultViewMappingProvider implements ViewMappingProvider, Serializable {
+public class DefaultViewMappingProvider extends ViewMappingProvider implements Serializable {
     @Inject
     private BeanManager beanManager;
-
-    @Override
-    public Class<? extends Annotation> getViewAnnotationType() {
-        return CDIView.class;
-    }
 
     @Override
     public String resolveViewMapping(String uriFragment) {

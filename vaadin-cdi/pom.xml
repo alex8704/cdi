@@ -14,6 +14,7 @@
         <!-- In addition to POMs, these version numbers are in ArchiveProvider for tests -->
         <vaadin.version>8.0-SNAPSHOT</vaadin.version>
         <deltaspike.version>1.7.2</deltaspike.version>
+        <classpath.scanner.version>2.0.21</classpath.scanner.version>
 
         <!-- Testing dependencies -->
         <selenium.version>2.53.0</selenium.version>
@@ -362,6 +363,13 @@
             <artifactId>deltaspike-core-impl</artifactId>
             <version>${deltaspike.version}</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.lukehutch</groupId>
+            <artifactId>fast-classpath-scanner</artifactId>
+            <version>${classpath.scanner.version}</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>

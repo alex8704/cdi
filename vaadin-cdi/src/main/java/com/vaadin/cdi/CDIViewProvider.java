@@ -16,13 +16,15 @@
 
 package com.vaadin.cdi;
 
-import java.lang.annotation.Annotation;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import com.vaadin.cdi.access.AccessControl;
+import com.vaadin.cdi.extend.ViewMappingProvider;
+import com.vaadin.cdi.internal.*;
+import com.vaadin.navigator.Navigator;
+import com.vaadin.navigator.View;
+import com.vaadin.navigator.ViewChangeListener;
+import com.vaadin.navigator.ViewProvider;
+import com.vaadin.shared.Registration;
+import com.vaadin.ui.UI;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -34,22 +36,11 @@ import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.util.AnnotationLiteral;
 import javax.inject.Inject;
-
-import com.vaadin.cdi.access.AccessControl;
-import com.vaadin.cdi.extend.ViewMappingProvider;
-import com.vaadin.cdi.internal.AnnotationUtil;
-import com.vaadin.cdi.internal.CDIUtil;
-import com.vaadin.cdi.internal.Conventions;
-import com.vaadin.cdi.internal.VaadinViewChangeCleanupEvent;
-import com.vaadin.cdi.internal.VaadinViewChangeEvent;
-import com.vaadin.cdi.internal.VaadinViewCreationEvent;
-import com.vaadin.cdi.internal.ViewBean;
-import com.vaadin.navigator.Navigator;
-import com.vaadin.navigator.View;
-import com.vaadin.navigator.ViewChangeListener;
-import com.vaadin.navigator.ViewProvider;
-import com.vaadin.shared.Registration;
-import com.vaadin.ui.UI;
+import java.lang.annotation.Annotation;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CDIViewProvider implements ViewProvider {
 
@@ -134,7 +125,7 @@ public class CDIViewProvider implements ViewProvider {
 
     protected boolean isUserHavingAccessToView(Bean<?> viewBean) {
 
-        if (viewBean.getBeanClass().isAnnotationPresent(mappingProvider.getViewAnnotationType())) {
+        if (ViewMappingProvider.isAnnotatedAsCDIView(viewBean.getBeanClass())) {
             if (viewBean.getBeanClass().isAnnotationPresent(DenyAll.class)) {
                 // DenyAll defined, everyone is denied access
                 return false;
@@ -178,8 +169,7 @@ public class CDIViewProvider implements ViewProvider {
         }
         for (Bean<?> bean : all) {
             Class<?> beanClass = bean.getBeanClass();
-            Annotation viewAnnotation = beanClass.getAnnotation(mappingProvider.getViewAnnotationType());
-            if (viewAnnotation == null) {
+            if (!ViewMappingProvider.isAnnotatedAsCDIView(beanClass)) {
                 continue;
             }
 

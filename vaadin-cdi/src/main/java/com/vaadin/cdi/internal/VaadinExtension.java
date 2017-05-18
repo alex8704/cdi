@@ -16,26 +16,21 @@
 
 package com.vaadin.cdi.internal;
 
-import java.lang.reflect.Modifier;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.logging.Logger;
-
-import javax.enterprise.event.Observes;
-import javax.enterprise.inject.spi.AfterBeanDiscovery;
-import javax.enterprise.inject.spi.Bean;
-import javax.enterprise.inject.spi.BeanManager;
-import javax.enterprise.inject.spi.Extension;
-import javax.enterprise.inject.spi.ProcessManagedBean;
-
-import com.vaadin.cdi.CDIView;
 import com.vaadin.cdi.NormalUIScoped;
 import com.vaadin.cdi.NormalViewScoped;
 import com.vaadin.cdi.UIScoped;
 import com.vaadin.cdi.ViewScoped;
+import com.vaadin.cdi.extend.ViewMappingProvider;
 import com.vaadin.cdi.internal.InconsistentDeploymentException.ID;
 import com.vaadin.navigator.View;
 import com.vaadin.ui.Component;
+
+import javax.enterprise.event.Observes;
+import javax.enterprise.inject.spi.*;
+import java.lang.reflect.Modifier;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * CDI Extension needed to register the @CDIUI scope to the runtime.
@@ -66,12 +61,12 @@ public class VaadinExtension implements Extension {
                     + beanClass.getCanonicalName());
         }
 
-        if (beanClass.isAnnotationPresent(CDIView.class)
+        if (ViewMappingProvider.isAnnotatedAsCDIView(beanClass)
                 && !View.class.isAssignableFrom(beanClass)
                 && !Modifier.isAbstract(beanClass.getModifiers())) {
             String message = "The non-abstract class "
                     + beanClass.getCanonicalName()
-                    + " with @CDIView should implement "
+                    + " with annotation(s) "+ViewMappingProvider.getViewMapperSimpleNames()+" should implement "
                     + View.class.getCanonicalName();
             getLogger().warning(message);
             throw new InconsistentDeploymentException(ID.CDIVIEW_WITHOUT_VIEW,
