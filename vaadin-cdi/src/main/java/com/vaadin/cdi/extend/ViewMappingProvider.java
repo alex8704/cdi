@@ -3,6 +3,7 @@ package com.vaadin.cdi.extend;
 import com.vaadin.cdi.CDIView;
 import com.vaadin.cdi.UIScoped;
 import com.vaadin.cdi.ViewScoped;
+import com.vaadin.cdi.internal.Conventions;
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
 import org.apache.deltaspike.core.util.AnnotationUtils;
 
@@ -11,6 +12,7 @@ import javax.enterprise.inject.Stereotype;
 import javax.enterprise.inject.spi.Bean;
 import java.lang.annotation.Annotation;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
 public abstract class ViewMappingProvider {
     protected static List<Class<? extends Annotation>> viewMapperAnnotations;
     protected static String viewMapperSimpleNames;
+    protected static Map<Class<? extends Annotation>, String> staticViewMappings;
     static {
         viewMapperAnnotations = new FastClasspathScanner()
                 .matchClassesWithAnnotation(ViewMapper.class, clazz -> {})
@@ -71,6 +74,14 @@ public abstract class ViewMappingProvider {
     public abstract String resolveViewMapping(String uriFragment);
     public abstract String resolveViewMapping(Class<?> viewClazz);
     public abstract boolean isInCurrentUI(Class<?> viewClass);
+
+    public static String resolveViewMappingStatic(Class<?> viewClazz){
+        String viewMapping = null;
+        if(staticViewMappings != null && !staticViewMappings.isEmpty()){
+            viewMapping = staticViewMappings.get(viewClazz);
+        }
+        return viewMapping != null ? viewMapping : Conventions.deriveMappingForView(viewClazz);
+    }
 
     public static void main(String[] args) {
         System.out.println(viewMapperAnnotations);
