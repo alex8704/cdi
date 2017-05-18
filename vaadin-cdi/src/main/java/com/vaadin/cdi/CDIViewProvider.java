@@ -36,6 +36,7 @@ import javax.enterprise.util.AnnotationLiteral;
 import javax.inject.Inject;
 
 import com.vaadin.cdi.access.AccessControl;
+import com.vaadin.cdi.extend.ViewMappingProvider;
 import com.vaadin.cdi.internal.AnnotationUtil;
 import com.vaadin.cdi.internal.CDIUtil;
 import com.vaadin.cdi.internal.Conventions;
@@ -47,6 +48,7 @@ import com.vaadin.navigator.Navigator;
 import com.vaadin.navigator.View;
 import com.vaadin.navigator.ViewChangeListener;
 import com.vaadin.navigator.ViewProvider;
+import com.vaadin.shared.Registration;
 import com.vaadin.ui.UI;
 
 public class CDIViewProvider implements ViewProvider {
@@ -62,6 +64,14 @@ public class CDIViewProvider implements ViewProvider {
     @Inject
     private AccessControl accessControl;
     private transient CreationalContext<?> currentViewCreationalContext;
+
+    @Inject
+    private ViewMappingProvider mappingProvider;
+
+    /**
+     * Variable to hold Navigator.viewChangeListener registration
+     */
+    private Registration viewChangeListenerRegistration;
 
     public final static class ViewChangeListenerImpl implements
             ViewChangeListener {
@@ -104,7 +114,7 @@ public class CDIViewProvider implements ViewProvider {
                 "Attempting to retrieve view name from string \"{0}\"",
                 viewAndParameters);
 
-        String name = parseViewName(viewAndParameters);
+        String name = mappingProvider.resolveViewMapping(viewAndParameters);
         ViewBean viewBean = getViewBean(name);
 
         if (viewBean == null) {
@@ -112,13 +122,6 @@ public class CDIViewProvider implements ViewProvider {
         }
 
         if (isUserHavingAccessToView(viewBean)) {
-            if (viewBean.getBeanClass().isAnnotationPresent(CDIView.class)) {
-                String specifiedViewName = Conventions
-                        .deriveMappingForView(viewBean.getBeanClass());
-                if (!specifiedViewName.isEmpty()) {
-                    return specifiedViewName;
-                }
-            }
             return name;
         } else {
             getLogger().log(Level.INFO,
@@ -131,20 +134,17 @@ public class CDIViewProvider implements ViewProvider {
 
     protected boolean isUserHavingAccessToView(Bean<?> viewBean) {
 
-        if (viewBean.getBeanClass().isAnnotationPresent(CDIView.class)) {
-            if (viewBean.getBeanClass()
-                    .isAnnotationPresent(DenyAll.class)) {
+        if (viewBean.getBeanClass().isAnnotationPresent(mappingProvider.getViewAnnotationType())) {
+            if (viewBean.getBeanClass().isAnnotationPresent(DenyAll.class)) {
                 // DenyAll defined, everyone is denied access
                 return false;
             }
 
-            if (!viewBean.getBeanClass()
-                    .isAnnotationPresent(RolesAllowed.class)) {
+            if (!viewBean.getBeanClass().isAnnotationPresent(RolesAllowed.class)) {
                 // No roles defined, everyone is allowed
                 return true;
             } else {
-                RolesAllowed rolesAnnotation = viewBean.getBeanClass()
-                        .getAnnotation(RolesAllowed.class);
+                RolesAllowed rolesAnnotation = viewBean.getBeanClass().getAnnotation(RolesAllowed.class);
                 boolean hasAccess = accessControl
                         .isUserInSomeRole(rolesAnnotation.value());
                 getLogger().log(
@@ -178,12 +178,12 @@ public class CDIViewProvider implements ViewProvider {
         }
         for (Bean<?> bean : all) {
             Class<?> beanClass = bean.getBeanClass();
-            CDIView viewAnnotation = beanClass.getAnnotation(CDIView.class);
+            Annotation viewAnnotation = beanClass.getAnnotation(mappingProvider.getViewAnnotationType());
             if (viewAnnotation == null) {
                 continue;
             }
 
-            String mapping = Conventions.deriveMappingForView(beanClass);
+            String mapping = mappingProvider.resolveViewMapping(beanClass);
             getLogger().log(Level.FINER,
                     "{0} is annotated, the viewName is \"{1}\"",
                     new Object[] { beanClass.getName(), mapping });
@@ -218,26 +218,8 @@ public class CDIViewProvider implements ViewProvider {
         Set<Bean<?>> viewBeans = new HashSet<Bean<?>>();
 
         for (Bean<?> bean : beans) {
-            CDIView viewAnnotation = bean.getBeanClass().getAnnotation(
-                    CDIView.class);
-
-            if (viewAnnotation == null) {
-                continue;
-            }
-
-            List<Class<? extends UI>> uiClasses = Arrays.asList(viewAnnotation
-                    .uis());
-
-            if (uiClasses.contains(UI.class)) {
+            if(mappingProvider.isInCurrentUI(bean.getBeanClass())){
                 viewBeans.add(bean);
-            } else {
-                Class<? extends UI> currentUI = UI.getCurrent().getClass();
-                for (Class<? extends UI> uiClass : uiClasses) {
-                    if (uiClass.isAssignableFrom(currentUI)) {
-                        viewBeans.add(bean);
-                        break;
-                    }
-                }
             }
         }
 
@@ -295,12 +277,8 @@ public class CDIViewProvider implements ViewProvider {
             getLogger().log(Level.FINE, "Returning view instance {0}", view.toString());
 
             Navigator navigator = currentUI.getNavigator();
-            if (navigator != null) {
-                // This is a fairly dumb way of making sure that there is
-                // one and only one CDI viewChangeListener for this
-                // Navigator.
-                navigator.removeViewChangeListener(viewChangeListener);
-                navigator.addViewChangeListener(viewChangeListener);
+            if (navigator != null && viewChangeListenerRegistration == null) {
+                viewChangeListenerRegistration = navigator.addViewChangeListener(viewChangeListener);
             }
             return view;
         }
@@ -316,22 +294,6 @@ public class CDIViewProvider implements ViewProvider {
                             "CDIViewProvider is being destroyed, releasing creational context for current view");
             currentViewCreationalContext.release();
         }
-    }
-
-    private String parseViewName(String viewAndParameters) {
-
-        String viewName = viewAndParameters;
-        if (viewName.startsWith("!")) {
-            viewName = viewName.substring(1);
-        }
-
-        for (String name : AnnotationUtil.getCDIViewMappings(beanManager)) {
-            if (viewName.equals(name) || (viewName.startsWith(name + "/"))) {
-                return name;
-            }
-        }
-
-        return null;
     }
 
     public static VaadinViewChangeCleanupEvent getCleanupEvent() {

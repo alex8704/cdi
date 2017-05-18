@@ -18,6 +18,8 @@ package com.vaadin.cdi;
 
 import javax.enterprise.inject.spi.Extension;
 
+import com.vaadin.cdi.extend.DefaultViewMappingProvider;
+import com.vaadin.cdi.extend.ViewMappingProvider;
 import com.vaadin.cdi.internal.*;
 import org.jboss.shrinkwrap.api.ArchivePaths;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -51,7 +53,7 @@ public class ArchiveProvider {
             VaadinExtension.class, VaadinContextualStorage.class, ContextWrapper.class,
             CDIUtil.class, URLMapping.class,
             UIScoped.class, ViewScoped.class, NormalUIScoped.class, NormalViewScoped.class,
-            CounterFilter.class, Counter.class};
+            CounterFilter.class, Counter.class, ViewMappingProvider.class, DefaultViewMappingProvider.class};
     public static WebArchive createWebArchive(String warName, Class... classes) {
         return createWebArchive(warName, true, classes);
     }
