@@ -5,15 +5,12 @@ import com.vaadin.cdi.UIScoped;
 import com.vaadin.cdi.ViewScoped;
 import com.vaadin.cdi.internal.Conventions;
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner;
-import org.apache.deltaspike.core.util.AnnotationUtils;
 
 import javax.enterprise.inject.Alternative;
 import javax.enterprise.inject.Stereotype;
-import javax.enterprise.inject.spi.Bean;
 import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -26,7 +23,7 @@ import java.util.stream.Collectors;
 public abstract class ViewMappingProvider {
     protected static List<Class<? extends Annotation>> viewMapperAnnotations;
     protected static String viewMapperSimpleNames;
-    protected static Map<Class<? extends Annotation>, String> staticViewMappings;
+    protected static Map<Class<?>, String> staticViewMappings;
     static {
         viewMapperAnnotations = new FastClasspathScanner()
                 .matchClassesWithAnnotation(ViewMapper.class, clazz -> {})
@@ -83,7 +80,4 @@ public abstract class ViewMappingProvider {
         return viewMapping != null ? viewMapping : Conventions.deriveMappingForView(viewClazz);
     }
 
-    public static void main(String[] args) {
-        System.out.println(viewMapperAnnotations);
-    }
 }
