@@ -17,6 +17,7 @@
 package com.vaadin.cdi;
 
 import com.vaadin.cdi.access.AccessControl;
+import com.vaadin.cdi.extend.CustomViewMappingProvider;
 import com.vaadin.cdi.extend.ViewMappingProvider;
 import com.vaadin.cdi.internal.*;
 import com.vaadin.navigator.Navigator;
@@ -32,6 +33,7 @@ import javax.annotation.security.DenyAll;
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.inject.Any;
+import javax.enterprise.inject.Instance;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import javax.enterprise.util.AnnotationLiteral;
@@ -57,6 +59,11 @@ public class CDIViewProvider implements ViewProvider {
     private transient CreationalContext<?> currentViewCreationalContext;
 
     @Inject
+    private Instance<ViewMappingProvider> defaultMappingProvider;
+    @Inject
+    @CustomViewMappingProvider
+    private Instance<ViewMappingProvider> customMappingProvider;
+
     private ViewMappingProvider mappingProvider;
 
     /**
@@ -105,7 +112,7 @@ public class CDIViewProvider implements ViewProvider {
                 "Attempting to retrieve view name from string \"{0}\"",
                 viewAndParameters);
 
-        String name = mappingProvider.resolveViewMapping(viewAndParameters);
+        String name = getMappingProvider().resolveViewMapping(viewAndParameters);
         ViewBean viewBean = getViewBean(name);
 
         if (viewBean == null) {
@@ -173,7 +180,7 @@ public class CDIViewProvider implements ViewProvider {
                 continue;
             }
 
-            String mapping = mappingProvider.resolveViewMapping(beanClass);
+            String mapping = getMappingProvider().resolveViewMapping(beanClass);
             getLogger().log(Level.FINER,
                     "{0} is annotated, the viewName is \"{1}\"",
                     new Object[] { beanClass.getName(), mapping });
@@ -208,7 +215,7 @@ public class CDIViewProvider implements ViewProvider {
         Set<Bean<?>> viewBeans = new HashSet<Bean<?>>();
 
         for (Bean<?> bean : beans) {
-            if(mappingProvider.isInCurrentUI(bean.getBeanClass())){
+            if(getMappingProvider().isInCurrentUI(bean.getBeanClass())){
                 viewBeans.add(bean);
             }
         }
@@ -284,6 +291,13 @@ public class CDIViewProvider implements ViewProvider {
                             "CDIViewProvider is being destroyed, releasing creational context for current view");
             currentViewCreationalContext.release();
         }
+    }
+
+    protected ViewMappingProvider getMappingProvider(){
+        if(mappingProvider == null){
+            mappingProvider = (!customMappingProvider.isUnsatisfied() && !customMappingProvider.isAmbiguous()) ? customMappingProvider.get() : defaultMappingProvider.get();
+        }
+        return mappingProvider;
     }
 
     public static VaadinViewChangeCleanupEvent getCleanupEvent() {
